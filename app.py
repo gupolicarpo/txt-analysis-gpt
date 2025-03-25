@@ -4,15 +4,15 @@ from dotenv import load_dotenv
 import os
 from docx import Document
 import PyPDF2
+import time
 
 load_dotenv()
-
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-st.title("📚 GPT Academic Text Analyzer (Prototype)")
+st.title("📚 Analisador Acadêmico com Assistente GPT Personalizado")
 
 uploaded_file = st.file_uploader(
-    "Upload your thesis file (.txt, .docx, .pdf)", 
+    "Faça upload do seu arquivo de texto (.txt, .docx, .pdf)", 
     type=['txt', 'docx', 'pdf']
 )
 
@@ -40,32 +40,38 @@ if uploaded_file:
     elif file_type == "application/pdf":
         text = read_pdf(uploaded_file)
     else:
-        st.error("Unsupported file type!")
+        st.error("Tipo de arquivo não suportado!")
         st.stop()
     
-    prompt = f"""
-    Analise detalhadamente o texto acadêmico abaixo quanto à:
-    1. Coerência geral.
-    2. Qualidade lógica e argumentativa.
-    3. Adequação às normas ABNT.
-    Forneça sugestões específicas para melhoria, se necessário.
+    # Your custom Assistant ID goes here:
+    assistant_id = "asst_7nHbRFcMNeJ83Hpdys4dh4FF"
 
-    Texto acadêmico:
-    {text}
-    """
+    with st.spinner("Analisando com o Assistente GPT personalizado..."):
+        thread = client.beta.threads.create()
 
-    with st.spinner("GPT está analisando seu texto..."):
-        response = client.chat.completions.create(
-            model="gpt-4-turbo",
-            messages=[
-                {"role": "system", "content": "Você é um especialista acadêmico que ajuda a analisar teses universitárias."},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.2,
-            max_tokens=1000
+        client.beta.threads.messages.create(
+            thread_id=thread.id,
+            role="user",
+            content=f"Texto acadêmico para análise detalhada:\n\n{text}"
         )
 
-    analysis = response.choices[0].message.content
-        
-    st.success("✅ Análise concluída!")
-    st.markdown(analysis)
+        run = client.beta.threads.runs.create(
+            thread_id=thread.id,
+            assistant_id=assistant_id
+        )
+
+        # Wait for analysis to complete
+        while run.status in ["queued", "in_progress"]:
+            time.sleep(2)
+            run = client.beta.threads.runs.retrieve(
+                thread_id=thread.id,
+                run_id=run.id
+            )
+
+        if run.status == "completed":
+            messages = client.beta.threads.messages.list(thread_id=thread.id)
+            analysis = messages.data[0].content[0].text.value
+            st.success("✅ Análise concluída com sucesso!")
+            st.markdown(analysis)
+        else:
+            st.error("Houve um erro durante a análise. Tente novamente.")
