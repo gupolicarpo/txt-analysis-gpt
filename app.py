@@ -1,12 +1,13 @@
 import streamlit as st
-import openai
+from openai import OpenAI
 from dotenv import load_dotenv
 import os
 from docx import Document
 import PyPDF2
 
 load_dotenv()
-openai.api_key = os.getenv("OPENAI_API_KEY")
+
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 st.title("📚 GPT Academic Text Analyzer (Prototype)")
 
@@ -54,16 +55,17 @@ if uploaded_file:
     """
 
     with st.spinner("GPT está analisando seu texto..."):
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="gpt-4-turbo",
             messages=[
                 {"role": "system", "content": "Você é um especialista acadêmico que ajuda a analisar teses universitárias."},
                 {"role": "user", "content": prompt}
             ],
             temperature=0.2,
-            max_tokens=1000,
+            max_tokens=1000
         )
-        analysis = response['choices'][0]['message']['content']
+
+    analysis = response.choices[0].message.content
         
     st.success("✅ Análise concluída!")
     st.markdown(analysis)
