@@ -62,3 +62,8 @@ if uploaded_file:
             ],
             temperature=0.2,
             max_tokens=1000,
+        )
+        analysis = response['choices'][0]['message']['content']
+        
+    st.success("✅ Análise concluída!")
+    st.markdown(analysis)
